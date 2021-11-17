@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+extern crate diesel_migrations;
+
 use std::env;
 
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -18,6 +21,7 @@ async fn main() {
 }
 
 async fn run() {
+    migrations::run();
     let pool = build_pool();
     teloxide::enable_logging!();
     log::info!("Starting dices_bot...");
@@ -134,5 +138,6 @@ enum RatingUpdate {
     Inc,
 }
 
+pub mod migrations;
 pub mod models;
 pub mod schema;

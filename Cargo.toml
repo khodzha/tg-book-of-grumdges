@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 diesel = { version = "1", features = ["sqlite", "r2d2"] }
+diesel_migrations = "1.4.0"
 log = "0.4"
 pretty_env_logger = "0.4"
 teloxide = { version = "0.5", features = ["auto-send"] }
