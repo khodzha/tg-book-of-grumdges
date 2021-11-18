@@ -7,13 +7,13 @@ extern crate diesel_migrations;
 use std::env;
 
 use diesel::r2d2::{ConnectionManager, Pool};
-use diesel::sqlite::SqliteConnection;
+use diesel::PgConnection;
 use teloxide::{
     prelude::*,
     types::{ForwardKind, ForwardOrigin, MediaKind, MessageKind},
 };
 
-type SqlitePool = Pool<ConnectionManager<SqliteConnection>>;
+type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 #[tokio::main]
 async fn main() {
@@ -21,9 +21,10 @@ async fn main() {
 }
 
 async fn run() {
+    teloxide::enable_logging!();
+
     migrations::run();
     let pool = build_pool();
-    teloxide::enable_logging!();
     log::info!("Starting dices_bot...");
 
     let bot = Bot::from_env().auto_send();
@@ -67,7 +68,7 @@ async fn run() {
     .await;
 }
 
-fn build_pool() -> SqlitePool {
+fn build_pool() -> DbPool {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let manager = ConnectionManager::new(database_url);
@@ -87,11 +88,17 @@ fn extract_command(message: &Message) -> Option<ReplyCmd> {
                 ForwardKind::Origin(ForwardOrigin {
                     reply_to_message: Some(replied_message),
                 }) => {
+                    let author = msg.from.as_ref()?;
                     let replied_author = match &replied_message.kind {
-                        MessageKind::Common(reply_msg) => reply_msg.from.as_ref(),
-                        _ => None,
+                        MessageKind::Common(reply_msg) => reply_msg.from.as_ref()?.to_owned(),
+                        _ => return None,
                     };
-                    let replied_author = replied_author.unwrap().to_owned();
+
+                    // Dont let the author rate themselves
+                    if author.id == replied_author.id {
+                        return None;
+                    }
+
                     let update = if text.text.starts_with("+") {
                         RatingUpdate::Inc
                     } else if text.text.starts_with("-") {

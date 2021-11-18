@@ -3,7 +3,7 @@
 ## -----------------------------------------------------------------------------
 FROM rust:1.56-slim-buster as build-stage
 
-RUN apt update && apt install -y --no-install-recommends pkg-config libssl-dev libsqlite3-dev
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev libpq-dev
 
 WORKDIR "/build"
 
@@ -22,7 +22,7 @@ RUN touch src/main.rs && cargo build --release
 ## -----------------------------------------------------------------------------
 FROM ubuntu:21.10
 
-RUN apt update && apt install -y --no-install-recommends libssl-dev libsqlite3-dev openssl ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 openssl ca-certificates
 
 COPY --from=build-stage "/build/target/release/tg-book-of-grumdges" "/app/tg-book-of-grumdges"
 

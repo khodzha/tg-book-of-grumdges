@@ -1,9 +1,11 @@
-use super::SqlitePool;
+use super::DbPool;
 
-use diesel::query_dsl::RunQueryDsl;
-use diesel::sql_types::BigInt;
+use diesel::expression_methods::*;
+use diesel::query_dsl::*;
 use diesel::Queryable;
 use tokio::task::JoinHandle;
+
+use crate::schema::user_ratings::dsl::*;
 
 #[derive(Queryable)]
 pub struct UserRating {
@@ -11,12 +13,6 @@ pub struct UserRating {
     pub chat_id: i64,
     pub user_id: i64,
     pub rating: i64,
-}
-
-#[derive(QueryableByName)]
-struct UpsertedRating {
-    #[sql_type = "BigInt"]
-    rating: i64,
 }
 
 pub struct UpdateQuery {
@@ -32,48 +28,40 @@ impl UpdateQuery {
         }
     }
 
-    pub fn execute_inc(&self, pool: SqlitePool) -> JoinHandle<diesel::QueryResult<i64>> {
+    pub fn execute_inc(&self, pool: DbPool) -> JoinHandle<diesel::QueryResult<i64>> {
         let chat = self.chat_id;
         let user = self.user_id;
         tokio::task::spawn_blocking(move || {
             let conn = pool.get().unwrap();
 
-            let r: UpsertedRating = diesel::sql_query(
-                r#"
-                    INSERT INTO user_ratings (chat_id, user_id, rating)
-                    VALUES (?, ?, ?) ON CONFLICT(chat_id, user_id)
-                    DO UPDATE SET rating = rating + 1 RETURNING rating
-                "#,
-            )
-            .bind::<BigInt, _>(chat)
-            .bind::<BigInt, _>(user)
-            .bind::<BigInt, _>(1)
-            .get_result(&conn)?;
+            let r = diesel::insert_into(user_ratings)
+                .values((chat_id.eq(chat), user_id.eq(user), rating.eq(1)))
+                .on_conflict((chat_id, user_id))
+                .do_update()
+                .set(rating.eq(rating + 1))
+                .returning(rating)
+                .get_result(&conn)?;
 
-            Ok(r.rating)
+            Ok(r)
         })
     }
 
-    pub fn execute_dec(&self, pool: SqlitePool) -> JoinHandle<diesel::QueryResult<i64>> {
+    pub fn execute_dec(&self, pool: DbPool) -> JoinHandle<diesel::QueryResult<i64>> {
         let chat = self.chat_id;
         let user = self.user_id;
 
         tokio::task::spawn_blocking(move || {
             let conn = pool.get().unwrap();
 
-            let r: UpsertedRating = diesel::sql_query(
-                r#"
-                    INSERT INTO user_ratings (chat_id, user_id, rating)
-                    VALUES (?, ?, ?) ON CONFLICT(chat_id, user_id)
-                    DO UPDATE SET rating = rating - 1 RETURNING rating
-                "#,
-            )
-            .bind::<BigInt, _>(chat)
-            .bind::<BigInt, _>(user)
-            .bind::<BigInt, _>(-1)
-            .get_result(&conn)?;
+            let r = diesel::insert_into(user_ratings)
+                .values((chat_id.eq(chat), user_id.eq(user), rating.eq(-1)))
+                .on_conflict((chat_id, user_id))
+                .do_update()
+                .set(rating.eq(rating - 1))
+                .returning(rating)
+                .get_result(&conn)?;
 
-            Ok(r.rating)
+            Ok(r)
         })
     }
 }

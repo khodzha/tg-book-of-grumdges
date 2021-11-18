@@ -1,8 +1,8 @@
 table! {
     user_ratings (id) {
-        id -> Nullable<Integer>,
-        chat_id -> BigInt,
-        user_id -> BigInt,
-        rating -> BigInt,
+        id -> Int8,
+        chat_id -> Int8,
+        user_id -> Int8,
+        rating -> Int8,
     }
 }

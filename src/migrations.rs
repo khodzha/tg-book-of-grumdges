@@ -1,7 +1,7 @@
 use std::env;
 
 use diesel::Connection;
-use diesel::SqliteConnection;
+use diesel::PgConnection;
 
 diesel_migrations::embed_migrations!("migrations");
 
@@ -11,8 +11,21 @@ pub fn run() {
         .expect("Migrations failed");
 }
 
-pub fn establish_connection() -> SqliteConnection {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    SqliteConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+pub fn establish_connection() -> PgConnection {
+    loop {
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        match PgConnection::establish(&database_url) {
+            Ok(conn) => {
+                return conn;
+            }
+            Err(e) => {
+                log::error!(
+                    "Error connecting to {} before running migrations, err = {:?}",
+                    database_url,
+                    e
+                );
+                std::thread::sleep(std::time::Duration::from_secs(5));
+            }
+        }
+    }
 }
