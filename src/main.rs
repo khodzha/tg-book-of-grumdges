@@ -51,7 +51,7 @@ async fn run() {
                     Ok(rating) => {
                         message
                             .reply_to(format!(
-                                "{} rating = {}",
+                                "{}'s rating is now {}",
                                 user.mention().unwrap_or_else(|| user.full_name()),
                                 rating
                             ))
