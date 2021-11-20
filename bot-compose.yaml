@@ -1,0 +1,20 @@
+version: "3"
+services:
+  bot-db:
+    image: postgres
+    restart: unless-stopped
+    volumes:
+      - /host/dir:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: somepassword
+      POSTGRES_DB: db-name
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+  grumdges-bot:
+    image: khodzha/tg-book-of-grumdges
+    restart: unless-stopped
+    environment:
+      TELOXIDE_TOKEN: telegram-token
+      DATABASE_URL: 'postgres://postgres:somepassword@bot-db:5432/db-name'
+    depends_on:
+      - bot-db
+
