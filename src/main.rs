@@ -50,7 +50,7 @@ async fn run() {
                 match r.await.expect("Failed to join task") {
                     Ok(rating) => {
                         message
-                            .reply_to(format!(
+                            .answer(format!(
                                 "{}'s rating is now {}",
                                 user.mention().unwrap_or_else(|| user.full_name()),
                                 rating
