@@ -83,50 +83,60 @@ fn build_pool() -> DbPool {
 
 fn extract_command(message: &Message) -> Option<ReplyCmd> {
     match &message.kind {
-        MessageKind::Common(msg) => match &msg.media_kind {
-            MediaKind::Text(text) => match &msg.forward_kind {
-                ForwardKind::Origin(ForwardOrigin {
-                    reply_to_message: Some(replied_message),
-                }) => {
-                    let author = msg.from.as_ref()?;
-                    let replied_author = match &replied_message.kind {
-                        MessageKind::Common(reply_msg) => reply_msg.from.as_ref()?.to_owned(),
-                        _ => return None,
-                    };
+        MessageKind::Common(msg) => match &msg.forward_kind {
+            ForwardKind::Origin(ForwardOrigin {
+                reply_to_message: Some(replied_message),
+            }) => {
+                let author = msg.from.as_ref()?;
+                let replied_author = match &replied_message.kind {
+                    MessageKind::Common(reply_msg) => reply_msg.from.as_ref()?.to_owned(),
+                    _ => return None,
+                };
 
-                    // Dont let the author rate themselves
-                    if author.id == replied_author.id {
+                // Dont let the author rate themselves
+                if author.id == replied_author.id {
+                    return None;
+                }
+
+                let text: &str = match &msg.media_kind {
+                    MediaKind::Text(text) => &text.text,
+                    MediaKind::Animation(anim) => anim.caption.as_deref().unwrap_or(""),
+                    MediaKind::Audio(audio) => audio.caption.as_deref().unwrap_or(""),
+                    MediaKind::Photo(photo) => photo.caption.as_deref().unwrap_or(""),
+                    MediaKind::Video(video) => video.caption.as_deref().unwrap_or(""),
+                    MediaKind::Voice(voice) => voice.caption.as_deref().unwrap_or(""),
+                    MediaKind::Document(doc) => doc.caption.as_deref().unwrap_or(""),
+                    _other_media_kinds => {
                         return None;
                     }
+                };
 
-                    let update = if text.text.starts_with("+") {
-                        RatingUpdate::Inc
-                    } else if text.text.starts_with("-") {
-                        RatingUpdate::Dec
-                    } else {
-                        return None;
-                    };
+                let update = if text.starts_with("+") {
+                    RatingUpdate::Inc
+                } else if text.starts_with("-") {
+                    RatingUpdate::Dec
+                } else {
+                    return None;
+                };
 
-                    log::debug!(
-                        "{:?}, chat = {:?}, user = {:?}",
-                        update,
-                        message.chat,
-                        replied_author,
-                    );
+                log::debug!(
+                    "{:?}, chat = {:?}, user = {:?}",
+                    update,
+                    message.chat,
+                    replied_author,
+                );
 
-                    let reply_cmd = ReplyCmd {
-                        user: replied_author,
-                        chat_id: message.chat.id,
-                        update,
-                    };
+                let reply_cmd = ReplyCmd {
+                    user: replied_author,
+                    chat_id: message.chat.id,
+                    update,
+                };
 
-                    return Some(reply_cmd);
-                }
-                _ => {}
-            },
-            _ => {}
+                return Some(reply_cmd);
+            }
+            _other_forward_kinds => {}
         },
-        _ => {}
+        _other_message_kinds => {}
     }
 
     None
