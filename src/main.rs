@@ -113,6 +113,8 @@ fn extract_command(message: &Message) -> Option<ReplyCmd> {
 
                 let update = if text.starts_with("+") {
                     RatingUpdate::Inc
+                } else if is_dialogue(text) {
+                    return None;
                 } else if text.starts_with("-") {
                     RatingUpdate::Dec
                 } else {
@@ -153,6 +155,31 @@ struct ReplyCmd {
 enum RatingUpdate {
     Dec,
     Inc,
+}
+
+fn is_dialogue(text: &str) -> bool {
+    text.split("\n")
+        .filter(|s| s.trim_start().len() > 0)
+        .count()
+        > 1
+        && text
+            .split("\n")
+            .filter(|s| s.trim_start().len() > 0)
+            .all(|s| s.trim_start().starts_with("- "))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dialogue() {
+        assert_eq!(is_dialogue("- hello\n - goodbye"), true);
+        assert_eq!(is_dialogue("- hello\n - goodbye\n"), true);
+        assert_eq!(is_dialogue("- hello"), false);
+        assert_eq!(is_dialogue("\n"), false);
+        assert_eq!(is_dialogue(""), false);
+    }
 }
 
 pub mod migrations;
