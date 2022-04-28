@@ -158,12 +158,9 @@ enum RatingUpdate {
 }
 
 fn is_dialogue(text: &str) -> bool {
-    text.split("\n")
-        .filter(|s| s.trim_start().len() > 0)
-        .count()
-        > 1
+    text.lines().filter(|s| s.trim_start().len() > 0).count() > 1
         && text
-            .split("\n")
+            .lines()
             .filter(|s| s.trim_start().len() > 0)
             .all(|s| s.trim_start().starts_with("- "))
 }
